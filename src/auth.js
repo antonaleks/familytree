@@ -1,7 +1,7 @@
-function b64(str) {
-  let bin = '';
-  for (const byte of new TextEncoder().encode(str)) bin += String.fromCharCode(byte);
-  return btoa(bin);
-}
-export function encodePassword(plain) { return b64(plain); }
-export function checkPassword(input, storedB64) { return b64(input) === storedB64; }
+import { signIn, signOut, getSession } from './db.js';
+
+// Вход редактора по общему аккаунту (email+пароль). Бросает при ошибке.
+export async function login(email, password) { await signIn(email, password); }
+export async function logout() { await signOut(); }
+// Есть ли активная сессия (т.е. можно редактировать).
+export async function isEditor() { return !!(await getSession()); }

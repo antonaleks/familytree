@@ -3,12 +3,11 @@ import {
   ReactFlow, Background, Controls, MarkerType,
   applyNodeChanges, useReactFlow, ReactFlowProvider
 } from '@xyflow/react';
-import { CONFIG } from '../config.js';
-import { decodeData, encodeData, buildGraph } from './data.js';
-import { checkPassword } from './auth.js';
+import { buildGraph } from './data.js';
+import { login, isEditor } from './auth.js';
 import { findRelation } from './kinship.js';
-import { resizeImage, blobToBase64 } from './photo.js';
-import { buildCommitFiles, commitToGitHub } from './save.js';
+import { resizeImage } from './photo.js';
+import { loadTree, saveTree, uploadPhoto } from './db.js';
 import { buildLayout } from './layout.js';
 import PersonNode from './PersonNode.jsx';
 import PersonModal from './PersonModal.jsx';
@@ -31,15 +30,13 @@ function Tree() {
   const [kinshipMode, setKinshipMode] = useState(false);
   const [selected, setSelected] = useState([]);
   const [modal, setModal] = useState(null); // {type:'person',id} | {type:'kinship',a,b,r}
-  const [newPhotos, setNewPhotos] = useState([]);
+  const [version, setVersion] = useState(1);
   const { fitView } = useReactFlow();
 
-  // первичная загрузка данных
+  // первичная загрузка данных из Supabase
   useEffect(() => {
-    const url = import.meta.env.BASE_URL + CONFIG.dataPath + '?_=' + Date.now();
-    fetch(url)
-      .then(r => (r.ok ? r.text() : ''))
-      .then(t => setGraph(buildGraph(decodeData(t.trim()))))
+    loadTree()
+      .then(({ data, version }) => { setGraph(buildGraph(data)); setVersion(version); })
       .catch(() => setGraph(buildGraph({ persons: [] })));
   }, []);
 
@@ -73,18 +70,21 @@ function Tree() {
     }
   }, [kinshipMode, graph]);
 
-  // ——— админ ———
-  const enterAdmin = () => {
+  // ——— вход редактора (общий аккаунт Supabase) ———
+  const enterAdmin = async () => {
     if (admin) return;
-    const pw = prompt('Пароль администратора:');
+    if (await isEditor()) { setAdmin(true); return; }
+    const email = prompt('Email редактора:');
+    if (!email) return;
+    const pw = prompt('Пароль:');
     if (pw == null) return;
-    if (checkPassword(pw, CONFIG.passwordB64)) { setAdmin(true); alert('Режим редактирования включён.'); }
-    else alert('Неверный пароль.');
+    try { await login(email, pw); setAdmin(true); alert('Режим редактирования включён.'); }
+    catch (e) { alert('Не удалось войти: ' + e.message); }
   };
 
   const syncGraph = () => setGraph(new Map(graph)); // триггерит relayout
 
-  // сохранить правки персоны
+  // сохранить правки персоны (фото грузится в Storage сразу)
   const savePerson = async (id, values, file) => {
     const p = graph.get(id);
     Object.assign(p, values);
@@ -93,9 +93,8 @@ function Tree() {
     if (file) {
       const blob = await resizeImage(file);
       const name = `${id}.jpg`;
-      const base64 = await blobToBase64(blob);
+      await uploadPhoto(blob, name);
       p.photo = name;
-      setNewPhotos(prev => [...prev.filter(x => x.name !== name), { name, base64 }]);
     }
     setModal(null);
     syncGraph();
@@ -116,14 +115,15 @@ function Tree() {
   };
 
   const doSave = async () => {
-    const token = prompt('GitHub токен (repo scope). Не сохраняется:');
-    if (!token) return;
     try {
       const raw = { persons: [...graph.values()] };
-      const files = buildCommitFiles(encodeData(raw), newPhotos, CONFIG);
-      await commitToGitHub(token, CONFIG, files, 'Update family data');
-      setNewPhotos([]);
-      alert('Сохранено в GitHub. Pages обновится через минуту.');
+      const res = await saveTree(raw, version);
+      if (res.conflict) {
+        alert('Древо изменилось в другом месте. Обнови страницу, затем повтори правки.');
+        return;
+      }
+      setVersion(res.version);
+      alert('Сохранено.');
     } catch (e) {
       alert('Ошибка сохранения: ' + e.message);
     }
