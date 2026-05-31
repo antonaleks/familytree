@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { encodeData, decodeData } from '../src/data.js';
+import { encodeData, decodeData, buildGraph } from '../src/data.js';
 
 test('encode/decode round-trip с кириллицей', () => {
   const obj = { persons: [{ id: '1', fio: 'Анна Захаровна' }] };
@@ -13,4 +13,23 @@ test('encode/decode round-trip с кириллицей', () => {
 
 test('decode пустого/битого даёт пустой набор', () => {
   assert.deepEqual(decodeData(''), { persons: [] });
+});
+
+test('buildGraph достраивает обратные связи', () => {
+  const data = { persons: [
+    { id: 'p', fio: 'Отец', children: ['c'] },
+    { id: 'c', fio: 'Сын' }
+  ]};
+  const g = buildGraph(data);
+  assert.deepEqual(g.get('c').parents, ['p']);
+  assert.deepEqual(g.get('p').children, ['c']);
+});
+
+test('buildGraph делает супругов взаимными', () => {
+  const data = { persons: [
+    { id: 'a', fio: 'Муж', spouses: ['b'] },
+    { id: 'b', fio: 'Жена' }
+  ]};
+  const g = buildGraph(data);
+  assert.deepEqual(g.get('b').spouses, ['a']);
 });
