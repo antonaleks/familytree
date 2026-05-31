@@ -1,0 +1,15 @@
+:root{
+  --burg-1:#5c2025; --burg-2:#380f12; --gold:#d4af6a; --gold-2:#f0dca8;
+  --name:#f5e8d8; --meta:#c8a98e; --photobg:#3a1518;
+  --bg:#241016;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Georgia,serif;background:var(--bg);color:var(--name)}
+#topbar{display:flex;justify-content:space-between;align-items:center;
+  padding:10px 18px;background:linear-gradient(#2a1014,#1c0a0d);
+  border-bottom:1px solid var(--gold)}
+#topbar h1{font-size:18px;letter-spacing:2px;color:var(--gold);margin:0}
+.actions button{background:transparent;border:1px solid var(--gold);color:var(--gold);
+  padding:6px 12px;border-radius:4px;cursor:pointer;font-family:inherit;margin-left:8px}
+.actions button:hover{background:var(--gold);color:var(--burg-2)}
+#tree{width:100%;height:calc(100vh - 56px);overflow:hidden}
