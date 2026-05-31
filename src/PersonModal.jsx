@@ -1,4 +1,6 @@
 import { useRef } from 'react';
+import { photoUrl } from './db.js';
+import { guessSex } from './data.js';
 
 const FIELDS = [
   ['fio', 'ФИО'],
@@ -14,6 +16,58 @@ const FIELDS = [
 ];
 const SEX = { m: 'муж', f: 'жен' };
 const STATUS = { alive: 'жив', deceased: 'упокоен', unknown: 'неизв' };
+
+// согласованный по роду ярлык статуса для просмотра
+function statusLabel(p) {
+  const f = p.sex === 'f';
+  if (p.status === 'alive') return f ? 'Жива' : 'Жив';
+  if (p.status === 'deceased') return f ? 'Упокоена' : 'Упокоен';
+  return 'Неизвестно';
+}
+
+function yearsText(p) {
+  if (p.deathYear) return `${p.birthYear ?? '?'} — ${p.deathYear}`;
+  return p.birthYear ? `${p.birthYear}` : '';
+}
+
+// строка «ярлык: значение», только если значение заполнено
+function Row({ label, value }) {
+  if (!value) return null;
+  return (
+    <div className="ft-vrow"><span className="ft-vlbl">{label}</span><span className="ft-vval">{value}</span></div>
+  );
+}
+
+// красивый просмотр карточки: только заполненные поля
+function PersonView({ person }) {
+  const p = person;
+  const sex = p.sex || guessSex(p.fio);
+  const years = yearsText(p);
+  return (
+    <div className="ft-view">
+      <div className="ft-vphoto">
+        {p.photo
+          ? <img src={photoUrl(p.photo)} alt="" />
+          : <span className="ft-vsilh">{sex === 'f' ? '👩' : '👨'}</span>}
+      </div>
+      <h3 className="ft-vname">{p.fio || '—'}</h3>
+      {p.birthSurname && <div className="ft-vmaiden">урожд. {p.birthSurname}</div>}
+      {years && <div className="ft-vyears">{years}</div>}
+      <div className="ft-vstatus">{statusLabel(p)}</div>
+      {p.bio && <div className="ft-vbio">{p.bio}</div>}
+      <div className="ft-vrows">
+        <Row label="Место рождения" value={p.birthPlace} />
+        <Row label="Национальность" value={p.nationality} />
+        {p.status === 'alive' && <Row label="Контакты" value={p.contacts} />}
+        {p.status === 'deceased' && (p.restMapUrl
+          ? <div className="ft-vrow"><span className="ft-vlbl">Упокоен</span>
+              <a className="ft-vval ft-vlink" href={p.restMapUrl} target="_blank" rel="noopener">
+                📍 {p.restPlace || 'на карте'}</a></div>
+          : <Row label="Место упокоения" value={p.restPlace} />)}
+      </div>
+    </div>
+  );
+}
 
 function Overlay({ children, onClose }) {
   return (
@@ -60,9 +114,8 @@ export default function PersonModal({ person, graph, editable, onClose, onSave, 
   if (!editable) {
     return (
       <Overlay onClose={onClose}>
-        <h3>{person.fio}</h3>
+        <PersonView person={person} />
         {focusBtn}
-        <pre className="ft-info">{JSON.stringify(person, null, 2)}</pre>
       </Overlay>
     );
   }
