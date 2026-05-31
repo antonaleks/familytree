@@ -32,6 +32,15 @@ test('пустые поля: всё равно показываем строки
   assert.match(h, /Место рожд\./);
   assert.match(h, /—/);
 });
+test('фамилия при рождении: показывается «урожд.» если есть', () => {
+  const h = renderCardHTML({ id:'9', fio:'Анна Петрова', status:'alive', birthSurname:'Иванова' });
+  assert.match(h, /урожд\. Иванова/);
+});
+test('фамилия при рождении: нет поля => нет строки «урожд.»', () => {
+  const h = renderCardHTML({ id:'9', fio:'Анна', status:'alive' });
+  assert.doesNotMatch(h, /урожд\./);
+});
+
 test('фото-имя файла => относительный путь photos/', () => {
   const h = renderCardHTML({ id:'1', fio:'Иван', status:'alive', photo:'1.jpg' });
   assert.match(h, /src="photos\/1\.jpg"/);

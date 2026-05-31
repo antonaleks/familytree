@@ -2,8 +2,9 @@ import { useRef } from 'react';
 
 const FIELDS = [
   ['fio', 'ФИО'],
-  ['birthYear', 'Год рождения'],
-  ['deathYear', 'Год смерти'],
+  ['birthSurname', 'Фамилия при рождении'],
+  ['birthYear', 'Дата/год рождения'],
+  ['deathYear', 'Дата/год смерти'],
   ['birthPlace', 'Место рождения'],
   ['nationality', 'Национальность'],
   ['bio', 'БИО'],
@@ -103,16 +104,18 @@ export default function PersonModal({ person, graph, editable, onClose, onSave, 
           </select>
         </label>
         <label>Фото <input type="file" ref={fileRef} accept="image/*" /></label>
-        <button type="submit">Применить</button>
+        <button type="submit" className="ft-btn ft-btn-primary">Применить</button>
       </form>
       <div className="ft-addrel">
-        Добавить родню:{' '}
-        <button onClick={() => onAddRelative(person.id, 'spouse')}>+ супруг(а)</button>
-        <button onClick={() => onAddRelative(person.id, 'child')}>+ ребёнок</button>
-        <button onClick={() => onAddRelative(person.id, 'parent')}>+ родитель</button>
+        <span className="ft-addrel-lbl">Добавить родню</span>
+        <div className="ft-addrel-row">
+          <button className="ft-btn ft-btn-ghost" onClick={() => onAddRelative(person.id, 'spouse')}>♥ супруг(а)</button>
+          <button className="ft-btn ft-btn-ghost" onClick={() => onAddRelative(person.id, 'child')}>▾ ребёнок</button>
+          <button className="ft-btn ft-btn-ghost" onClick={() => onAddRelative(person.id, 'parent')}>▴ родитель</button>
+        </div>
       </div>
       <div className="ft-danger">
-        <button type="button" className="ft-del"
+        <button type="button" className="ft-btn ft-del"
           onClick={() => { if (confirm(`Удалить карточку «${person.fio}»? Связи будут отвязаны.`)) onDelete(person.id); }}>
           Удалить карточку
         </button>

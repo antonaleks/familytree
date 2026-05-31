@@ -52,6 +52,7 @@ export function renderCardHTML(p) {
   <div class="ft-crest">&#9818;</div>
   ${photo}
   <h3 class="ft-name">${esc(p.fio) || EMPTY}</h3>
+  ${p.birthSurname ? `<div class="ft-maiden">урожд. ${esc(p.birthSurname)}</div>` : ''}
   <div class="ft-years">${years ? esc(years) : EMPTY}</div>
   <div class="ft-status">${st.icon} ${esc(st.label)}</div>
   <div class="ft-divider"></div>

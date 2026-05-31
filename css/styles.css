@@ -43,6 +43,7 @@ body{margin:0;font-family:Georgia,serif;background:var(--bg);color:var(--name)}
   align-items:center;justify-content:center;font-size:40px;color:var(--gold);
   object-fit:cover;box-shadow:0 0 0 2px var(--gold-2)}
 .ft-name{font-size:15px;letter-spacing:1px;color:var(--name);margin:.2em 0}
+.ft-maiden{font-size:11px;font-style:italic;color:var(--meta);margin:-.1em 0 .2em}
 .ft-years{font-size:11px;font-style:italic;color:var(--gold)}
 .ft-status{font-size:10px;letter-spacing:1px;color:var(--gold);
   border:1px solid var(--gold);border-radius:99px;display:inline-block;
@@ -64,14 +65,36 @@ body{margin:0;font-family:Georgia,serif;background:var(--bg);color:var(--name)}
 .ft-modal label{display:block;margin:8px 0;font-size:13px}
 .ft-modal input,.ft-modal select{width:100%;padding:6px;margin-top:2px;
   background:#1c0a0d;border:1px solid var(--gold);color:var(--name);border-radius:3px}
-.ft-modal button[type=submit],#ft-addbtn{background:var(--gold);color:var(--burg-2);
-  border:none;padding:8px 14px;border-radius:4px;cursor:pointer;margin-top:10px}
+.ft-modal input[type=file]{padding:6px 8px;cursor:pointer;color:var(--meta);font-size:12px}
+.ft-modal input[type=file]::file-selector-button{font-family:inherit;font-size:13px;
+  background:transparent;border:1px solid var(--gold);color:var(--gold);
+  padding:6px 14px;border-radius:99px;cursor:pointer;margin-right:10px;
+  transition:background .18s ease,color .18s ease,box-shadow .18s ease}
+.ft-modal input[type=file]::file-selector-button:hover{background:var(--gold);
+  color:var(--burg-2);box-shadow:0 0 12px rgba(212,175,106,.5)}
+/* единый стиль кнопок модалки */
+.ft-btn{font-family:inherit;font-size:13px;letter-spacing:.3px;cursor:pointer;
+  padding:8px 16px;border-radius:99px;border:1px solid transparent;
+  transition:background .18s ease,color .18s ease,box-shadow .18s ease,border-color .18s ease}
+.ft-btn-primary{background:linear-gradient(180deg,var(--gold-2),var(--gold));
+  color:var(--burg-2);font-weight:700;margin-top:12px;
+  box-shadow:0 2px 10px rgba(0,0,0,.35)}
+.ft-btn-primary:hover{box-shadow:0 0 16px rgba(212,175,106,.6);
+  background:linear-gradient(180deg,#fff0cf,var(--gold-2))}
+.ft-btn-ghost{background:transparent;border-color:var(--gold);color:var(--gold)}
+.ft-btn-ghost:hover{background:var(--gold);color:var(--burg-2);
+  box-shadow:0 0 14px rgba(212,175,106,.5)}
+#ft-addbtn{background:var(--gold);color:var(--burg-2);border:none;
+  padding:8px 14px;border-radius:4px;cursor:pointer;margin-top:10px}
+.ft-addrel{margin-top:16px;border-top:1px solid rgba(212,175,106,.22);padding-top:12px}
+.ft-addrel-lbl{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1px;
+  color:var(--meta);margin-bottom:8px}
+.ft-addrel-row{display:flex;flex-wrap:wrap;gap:8px}
 .ft-close{position:absolute;top:8px;right:12px;background:none;border:none;
   color:var(--gold);font-size:22px;cursor:pointer}
-.ft-danger{margin-top:14px;border-top:1px solid rgba(255,255,255,.12);padding-top:10px}
-.ft-del{background:#7a1f1f;color:#f3d6d6;border:none;padding:7px 12px;
-  border-radius:4px;cursor:pointer;font-size:13px}
-.ft-del:hover{background:#9a2727}
+.ft-danger{margin-top:16px;border-top:1px solid rgba(255,255,255,.12);padding-top:12px}
+.ft-del{background:#7a1f1f;color:#f3d6d6;border-color:#7a1f1f}
+.ft-del:hover{background:#9a2727;border-color:#9a2727;box-shadow:0 0 12px rgba(154,39,39,.5)}
 .ft-term{font-size:24px;color:var(--gold);text-align:center;font-family:'Cinzel',serif}
 .ft-def{font-size:13px;color:var(--meta)}
 .ft-info{white-space:pre-wrap;font-size:12px;color:var(--meta)}

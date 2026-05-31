@@ -110,14 +110,19 @@ function Tree() {
   const savePerson = async (id, values, file, coupleKey) => {
     const p = graph.get(id);
     Object.assign(p, values);
-    p.birthYear = values.birthYear ? +values.birthYear : null;
-    p.deathYear = values.deathYear ? +values.deathYear : null;
+    p.birthYear = values.birthYear || null; // свободная строка: «1997» или «26.01.1997»
+    p.deathYear = values.deathYear || null;
     if (coupleKey !== undefined) reassignParents(p, coupleKey);
     if (file) {
-      const blob = await resizeImage(file);
-      const name = `${id}.jpg`;
-      await uploadPhoto(blob, name);
-      p.photo = name;
+      try {
+        const blob = await resizeImage(file);
+        const name = `${id}.jpg`;
+        await uploadPhoto(blob, name);
+        p.photo = name;
+      } catch (e) {
+        alert('Не удалось загрузить фото: ' + e.message);
+        return;
+      }
     }
     setModal(null);
     syncGraph();
