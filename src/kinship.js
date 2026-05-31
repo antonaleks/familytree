@@ -42,8 +42,16 @@ function bloodTerm(graph, a, b, dA, dB) {
   if (dA === 2 && dB === 1) return bySex(B, 'дядя', 'тётя');
   if (dA === 1 && dB === 2) return bySex(B, 'племянник', 'племянница');
   if (dA === 2 && dB === 2) return bySex(B, 'двоюродный брат', 'двоюродная сестра');
-  // дальше — обобщённо «родственник» (детализацию N-юродных добавим в Task 6)
-  return 'родственник';
+  const cousinDeg = Math.min(dA, dB) - 1;       // 1=двоюродный, 2=троюродный...
+  const removed = Math.abs(dA - dB);
+  const ord = ['', 'двоюродный', 'троюродный', 'четвероюродный', 'пятиюродный'];
+  const ordF = ['', 'двоюродная', 'троюродная', 'четвероюродная', 'пятиюродная'];
+  const deg = ord[cousinDeg] || (cousinDeg + 1) + '-юродный';
+  const degF = ordF[cousinDeg] || (cousinDeg + 1) + '-юродная';
+  if (removed === 0) return bySex(B, deg + ' брат', degF + ' сестра');
+  // removed: ниже по поколению у A => дядя/тётя; у B => племянник
+  if (dA > dB) return bySex(B, deg + ' дядя', degF + ' тётя');
+  return bySex(B, deg + ' племянник', degF + ' племянница');
 }
 
 function withMeta(term) {
