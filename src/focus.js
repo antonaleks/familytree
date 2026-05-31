@@ -2,6 +2,16 @@
 // + инкрементальное раскрытие скрытых предков (вверх). Чистый модуль (node-тесты).
 import { computeBloodFamily } from './layout-core.js';
 
+// Кровный род фокуса: id с тем же верхним предком по отцовской линии.
+export function clanIds(graph, focusId) {
+  if (!focusId || !graph.has(focusId)) return new Set();
+  const fam = computeBloodFamily(graph);
+  const root = fam.get(focusId);
+  const s = new Set();
+  for (const [id, r] of fam) if (r === root) s.add(id);
+  return s;
+}
+
 // общие дети пары a×b (присутствующие в графе)
 export function coupleChildren(graph, a, b) {
   const A = graph.get(a);

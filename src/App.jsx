@@ -9,7 +9,7 @@ import { findRelation } from './kinship.js';
 import { resizeImage } from './photo.js';
 import { loadTree, saveTree, uploadPhoto } from './db.js';
 import { buildLayout } from './layout.js';
-import { visibleIds, expandableIds, downExpandableKeys, filterGraph } from './focus.js';
+import { visibleIds, expandableIds, downExpandableKeys, clanIds, filterGraph } from './focus.js';
 import PersonNode from './PersonNode.jsx';
 import UnionNode from './UnionNode.jsx';
 import PersonModal from './PersonModal.jsx';
@@ -63,6 +63,10 @@ function Tree() {
   const downKeys = useMemo(
     () => (graph && focusId ? downExpandableKeys(graph, visible) : new Set()),
     [graph, focusId, visible]);
+  // кровный род фокуса — красная рамка по отцовской линии
+  const clan = useMemo(
+    () => (graph && focusId ? clanIds(graph, focusId) : new Set()),
+    [graph, focusId]);
 
   // пересчёт раскладки: подграф view + сохранённые позиции
   const relayout = useCallback((g, pos) => {
@@ -219,6 +223,18 @@ function Tree() {
     }
   };
 
+  // экспорт видимого дерева (отображаемые карточки) в JSON-файл — для бэкапа
+  const exportJson = () => {
+    const persons = view ? [...view.values()] : [];
+    const blob = new Blob([JSON.stringify({ persons }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `family-tree-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // сбросить ручные подвижки → авто-раскладка (сохранится при следующем «Сохранить»)
   const resetTree = () => {
     if (!confirm('Сбросить расположение карточек к авто-раскладке?')) return;
@@ -247,6 +263,7 @@ function Tree() {
       const cls = [];
       if (selected.includes(n.id)) cls.push('ft-selected');
       if (hlNodes.has(n.id)) cls.push('ft-hl');
+      if (n.type === 'person' && clan.has(n.id)) cls.push('ft-blood');
       const exp = n.type === 'person' && expandable.has(n.id);
       const ukey = n.type === 'union' ? n.id.slice(2) : null;
       const down = ukey != null && downKeys.has(ukey);
@@ -255,7 +272,7 @@ function Tree() {
       if (down) data = { ...data, downExpandable: true, onExpandDown, ukey };
       return (cls.length || exp || down) ? { ...n, className: cls.join(' '), data } : n;
     }),
-    [nodes, selected, hlNodes, expandable, downKeys, onExpand, onExpandDown]);
+    [nodes, selected, hlNodes, expandable, downKeys, clan, onExpand, onExpandDown]);
 
   // подсветка самой наведённой стрелки
   const displayEdges = useMemo(() =>
@@ -275,6 +292,7 @@ function Tree() {
         <div className="actions">
           <button onClick={() => setModal({ type: 'focus' })}>От кого</button>
           {focusId && <button onClick={showAll}>Всё древо</button>}
+          <button onClick={exportJson}>Экспорт</button>
           <button onClick={() => { setKinshipMode(m => !m); setSelected([]); }}>
             {kinshipMode ? 'Отмена' : 'Кто кому кем'}
           </button>

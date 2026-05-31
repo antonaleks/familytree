@@ -155,3 +155,6 @@ body{margin:0;font-family:Georgia,serif;background:var(--bg);color:var(--name)}
 @keyframes ftpulse{0%,100%{opacity:.7}50%{opacity:1;text-shadow:0 0 14px var(--gold-2)}}
 .react-flow__node.ft-hl .ft-card{border-color:var(--gold-2);
   box-shadow:0 0 22px var(--gold-2)}
+/* кровный род фокуса — красная рамка по отцовской линии */
+.react-flow__node.ft-blood .ft-card{border-color:#c0392b;
+  box-shadow:0 8px 28px rgba(0,0,0,.4),0 0 0 2px #c0392b inset,0 0 14px rgba(192,57,43,.55)}

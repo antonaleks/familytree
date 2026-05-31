@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGraph } from '../src/data.js';
-import { visibleIds, expandableIds, downExpandableKeys, filterGraph } from '../src/focus.js';
+import { visibleIds, expandableIds, downExpandableKeys, clanIds, filterGraph } from '../src/focus.js';
 
 // Род A: основатель a(м) → b(м) → c(м). b женат на w(ж), у w свой отец wp(м).
 // z — изолированная персона другого рода.
@@ -22,6 +22,13 @@ test('фокус: патрилинейный род + супруги, чужой
   assert.deepEqual([...v].sort(), ['a', 'b', 'c', 'w']);
   assert.ok(!v.has('wp')); // тесть скрыт до раскрытия
   assert.ok(!v.has('z'));  // чужой род скрыт
+});
+
+test('clanIds: кровный род по отцу, без супруги-вошедшей', () => {
+  const g = fixture();
+  const clan = clanIds(g, 'b');
+  assert.deepEqual([...clan].sort(), ['a', 'b', 'c']);
+  assert.ok(!clan.has('w')); // супруга — не кровная
 });
 
 test('фокус null: виден весь граф', () => {
