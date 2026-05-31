@@ -25,3 +25,10 @@ test('нет фото: силуэт по полу (f => женский)', () => 
   const h = renderCardHTML(alive);
   assert.match(h, /silhouette-f|👩|&#128105;/);
 });
+test('пустые поля: всё равно показываем строки с «—»', () => {
+  const empty = { id:'3', fio:'Иван', status:'unknown' };
+  const h = renderCardHTML(empty);
+  assert.match(h, /Национальность/);
+  assert.match(h, /Место рожд\./);
+  assert.match(h, /—/);
+});

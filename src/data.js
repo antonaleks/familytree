@@ -27,11 +27,32 @@ export function decodeData(b64) {
   }
 }
 
+// мужские имена/уменьшительные, оканчивающиеся на -а/-я (исключения из «ж.»)
+const MALE_A = new Set([
+  'вася','ваня','миша','витя','юра','рома','дима','даня','паша','гриша',
+  'коля','толя','петя','гена','вова','серёжа','сережа','никита','илья',
+  'фома','данила','кузьма','савва','лука','лёша','леша','саша','лёва','лева',
+  'жора','боря','стёпа','степа','кеша','тёма','тема','сёма','сема','гоша'
+]);
+// явно женские имена, НЕ оканчивающиеся на -а/-я
+const FEMALE_OTHER = new Set(['любовь','нинель','эстер','рахиль','адель','нинэль']);
+
+// угадать пол по ФИО (первое слово = имя)
+export function guessSex(fio) {
+  const name = String(fio || '').trim().split(/\s+/)[0].toLowerCase();
+  if (!name) return 'm';
+  if (FEMALE_OTHER.has(name)) return 'f';
+  if (MALE_A.has(name)) return 'm';
+  if (/[ая]$/.test(name)) return 'f';
+  return 'm';
+}
+
 export function buildGraph(data) {
   const g = new Map();
   for (const raw of data.persons) {
     g.set(raw.id, {
       ...raw,
+      sex: raw.sex || guessSex(raw.fio),
       parents: [...(raw.parents || [])],
       spouses: [...(raw.spouses || [])],
       children: [...(raw.children || [])]

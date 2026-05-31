@@ -2,3 +2,17 @@
 .idea/
 .DS_Store
 node_modules/
+dist/
+
+# secrets / local env
+.env.local
+
+# scratch reference material (contains secrets / not for repo)
+ref.md
+img.png
+img_*.png
+
+# agent tooling
+.agents/
+.claude/
+skills-lock.json

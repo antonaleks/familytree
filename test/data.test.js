@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { encodeData, decodeData, buildGraph } from '../src/data.js';
+import { encodeData, decodeData, buildGraph, guessSex } from '../src/data.js';
 
 test('encode/decode round-trip с кириллицей', () => {
   const obj = { persons: [{ id: '1', fio: 'Анна Захаровна' }] };
@@ -32,4 +32,22 @@ test('buildGraph делает супругов взаимными', () => {
   ]};
   const g = buildGraph(data);
   assert.deepEqual(g.get('b').spouses, ['a']);
+});
+
+test('guessSex: окончание -а/-я → ж, кроме мужских уменьшительных', () => {
+  assert.equal(guessSex('Анна'), 'f');
+  assert.equal(guessSex('Евгения Петровна'), 'f');
+  assert.equal(guessSex('Любовь'), 'f');
+  assert.equal(guessSex('Вася'), 'm');
+  assert.equal(guessSex('Иван'), 'm');
+  assert.equal(guessSex('Никита'), 'm');
+});
+
+test('buildGraph проставляет sex по имени, если не задан', () => {
+  const g = buildGraph({ persons: [
+    { id: 'x', fio: 'Мария' },
+    { id: 'y', fio: 'Пётр' }
+  ]});
+  assert.equal(g.get('x').sex, 'f');
+  assert.equal(g.get('y').sex, 'm');
 });

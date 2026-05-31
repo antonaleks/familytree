@@ -1,3 +1,5 @@
+import { guessSex } from './data.js';
+
 const STATUS = {
   alive:    { label: 'Жив', icon: '🕊' },
   deceased: { label: 'Упокоен', icon: '⚰' },
@@ -18,28 +20,41 @@ function silhouette(sex) {
 function esc(s){ return String(s ?? '').replace(/[&<>"]/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
+const EMPTY = '—';
+// строка «ярлык: значение» (значение пустое → «—»)
+function metaRow(label, val) {
+  return `<div class="ft-meta"><span class="ft-lbl">${label}:</span> ${val ? esc(val) : EMPTY}</div>`;
+}
+
 export function renderCardHTML(p) {
-  const st = statusFor(p);
+  const sex = p.sex || guessSex(p.fio);
+  const st = statusFor({ ...p, sex });
   const years = p.deathYear ? `${p.birthYear ?? '?'} — ${p.deathYear}`
                             : (p.birthYear ? `${p.birthYear}` : '');
   const photo = p.photo
     ? `<img class="ft-photo" src="photos/${esc(p.photo)}" alt="">`
-    : `<div class="ft-photo ft-silh">${silhouette(p.sex)}</div>`;
-  const rest = (p.status === 'deceased' && p.restMapUrl)
-    ? `<a class="ft-rest" href="${esc(p.restMapUrl)}" target="_blank" rel="noopener">📍 ${esc(p.restPlace || 'на карте')}</a>`
-    : '';
-  const contacts = (p.status === 'alive' && p.contacts)
-    ? `<div class="ft-contacts">${esc(p.contacts)}</div>` : '';
+    : `<div class="ft-photo ft-silh">${silhouette(sex)}</div>`;
+  // место упокоения — только для упокоенных; ссылка если есть restMapUrl
+  let rest = '';
+  if (p.status === 'deceased') {
+    rest = p.restMapUrl
+      ? `<a class="ft-rest" href="${esc(p.restMapUrl)}" target="_blank" rel="noopener">📍 ${esc(p.restPlace || 'на карте')}</a>`
+      : metaRow('Упокоен', p.restPlace);
+  }
+  // контакты — только для живых
+  const contacts = (p.status === 'alive')
+    ? metaRow('Контакты', p.contacts) : '';
   return `
-<div class="ft-card ft-${esc(p.status)}" data-id="${esc(p.id)}">
+<div class="ft-card ft-${esc(p.status || 'unknown')}" data-id="${esc(p.id)}">
   <div class="ft-crest">&#9818;</div>
   ${photo}
-  <h3 class="ft-name">${esc(p.fio)}</h3>
-  <div class="ft-years">${esc(years)}</div>
+  <h3 class="ft-name">${esc(p.fio) || EMPTY}</h3>
+  <div class="ft-years">${years ? esc(years) : EMPTY}</div>
   <div class="ft-status">${st.icon} ${esc(st.label)}</div>
   <div class="ft-divider"></div>
-  ${p.bio ? `<div class="ft-bio">${esc(p.bio)}</div>` : ''}
-  <div class="ft-meta">${esc([p.nationality, p.birthPlace && 'род. ' + p.birthPlace].filter(Boolean).join(' · '))}</div>
+  <div class="ft-bio">${p.bio ? esc(p.bio) : EMPTY}</div>
+  ${metaRow('Национальность', p.nationality)}
+  ${metaRow('Место рожд.', p.birthPlace)}
   ${rest}${contacts}
 </div>`;
 }

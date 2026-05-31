@@ -1,9 +1,10 @@
 import { encodeData } from '../src/data.js';
 import { writeFileSync } from 'node:fs';
 
-// Каркас по схеме со стикеров (PDF). Только ФИО + связи; остальное — на сайте.
-// Имена повторяются, поэтому id уникальные. status:'unknown' у всех.
-// Связи best-effort — проверить и поправить при вводе данных.
+// Каркас по схеме со стикеров (PDF) + правки families от владельца.
+// Только ФИО + связи; остальное заполняется на сайте. status:'unknown'.
+// ВАЖНО: повторяющиеся имена — РАЗНЫЕ люди (id уникальны, по имени не сливать).
+// Оба супруга дублируют children, чтобы buildGraph проставил обоих родителями.
 const U = (id, fio, sex, rel = {}) => ({
   id, fio, sex, status: 'unknown',
   spouses: rel.spouses || [], children: rel.children || []
@@ -24,73 +25,90 @@ const persons = [
   U('varvara', 'Варвара', 'f'),
   U('petr1', 'Пётр', 'm'),
   U('ivan1', 'Иван', 'm'),
-  // Павел ♥ Пелагия — брак, соединяющий обе семьи
+  // Павел (сын Захара) ♥ Пелагия (дочь Василисы) — брак, соединяющий обе семьи.
+  // Дети: Ира, Вера, Александр, Михаил.
   U('pavel', 'Павел', 'm', { spouses: ['pelagia'],
-    children: ['viktor', 'vasya', 'nina', 'lyuba', 'olga', 'vera', 'aleksandr_z', 'mihail', 'vanya1'] }),
+    children: ['ira', 'vera', 'aleksandr_z', 'mihail'] }),
   U('pelagia', 'Пелагия', 'f', { spouses: ['pavel'],
-    children: ['viktor', 'vasya', 'nina', 'lyuba', 'olga', 'vera', 'aleksandr_z', 'mihail', 'vanya1'] }),
+    children: ['ira', 'vera', 'aleksandr_z', 'mihail'] }),
   U('andrey', 'Андрей', 'm'),
   U('ivan2', 'Иван', 'm'),
   U('petr2', 'Пётр', 'm'),
   U('evgenia', 'Евгения', 'f'),
 
-  // — Поколение 3: дети Павла ♥ Пелагии —
-  U('viktor', 'Виктор', 'm', { spouses: ['ira_v'],
-    children: ['katya1', 'vitya', 'oleg1', 'pavel2'] }),
-  U('ira_v', 'Ира', 'f', { spouses: ['viktor'],
-    children: ['katya1', 'vitya', 'oleg1', 'pavel2'] }),
-  U('vasya', 'Вася', 'm'),
-  U('nina', 'Нина', 'f'),
+  // — Поколение 3: дети Павла+Пелагии —
+  U('ira', 'Ира', 'f', { spouses: ['viktor'],
+    children: ['vitya', 'larisa', 'pavel_jr'] }),
+  U('vera', 'Вера', 'f', { spouses: ['aleksey'],
+    children: ['oleg_v', 'yura'] }),
+  U('aleksandr_z', 'Александр', 'm', { spouses: ['zinaida'],
+    children: ['elena', 'gerka'] }),
+  U('mihail', 'Михаил', 'm', { spouses: ['lilya'],
+    children: ['ira_ml', 'natasha'] }),
+
+  // — Семья Виктора (orange-кластер): вошла через брак Виктор♥Ира.
+  // Виктор, Вася, Нина, Люба, Ольга — родные siblings (дети Александра+Матрёны).
+  U('aleksandr_m', 'Александр', 'm', { spouses: ['matrena'],
+    children: ['viktor', 'nina', 'lyuba', 'olga'] }),
+  U('matrena', 'Матрёна', 'f', { spouses: ['aleksandr_m'],
+    children: ['viktor', 'nina', 'lyuba', 'olga'] }),
+  U('viktor', 'Виктор', 'm', { spouses: ['ira'],
+    children: ['vitya', 'larisa', 'pavel_jr'] }),
+  // Нина (дочь Александра+Матрёны) ♥ Вася → Катя, Миша, Александр.
+  // Вася вошёл по браку (НЕ брат Виктора). Бывший «остров» подключён через Нину.
+  U('nina', 'Нина', 'f', { spouses: ['vasya'],
+    children: ['katya_o', 'misha', 'aleksandr_o'] }),
+  U('vasya', 'Вася', 'm', { spouses: ['nina'],
+    children: ['katya_o', 'misha', 'aleksandr_o'] }),
   U('lyuba', 'Люба', 'f'),
   U('olga', 'Ольга', 'f'),
-  U('vera', 'Вера', 'f', { spouses: ['aleksey'],
-    children: ['oleg2', 'yura', 'ira2', 'roma'] }),
-  U('aleksey', 'Алексей Майорников', 'm', { spouses: ['vera'],
-    children: ['oleg2', 'yura', 'ira2', 'roma'] }),
-  U('aleksandr_z', 'Александр', 'm', { spouses: ['zinaida'], children: ['elena'] }),
-  U('zinaida', 'Зинаида', 'f', { spouses: ['aleksandr_z'], children: ['elena'] }),
-  U('mihail', 'Михаил', 'm', { spouses: ['lilya'], children: ['ira3', 'natasha'] }),
-  U('lilya', 'Лиля', 'f', { spouses: ['mihail'], children: ['ira3', 'natasha'] }),
-  U('vanya1', 'Ваня', 'm'),
 
   // — Поколение 4: дети Виктора ♥ Иры —
-  U('katya1', 'Катя', 'f', { spouses: ['misha'], children: ['aleksandr_o'] }),
-  U('misha', 'Миша', 'm', { spouses: ['katya1'], children: ['aleksandr_o'] }),
+  // Олег — отдельный человек (НЕ сын Веры), вошёл через брак с Ларисой.
   U('vitya', 'Витя', 'm'),
-  U('oleg1', 'Олег', 'm', { spouses: ['larisa'], children: ['dima', 'dasha'] }),
-  U('larisa', 'Лариса', 'f', { spouses: ['oleg1'], children: ['dima', 'dasha'] }),
-  U('pavel2', 'Павел', 'm', { spouses: ['inna'], children: ['anton', 'danya'] }),
-  U('inna', 'Инна', 'f', { spouses: ['pavel2'], children: ['anton', 'danya'] }),
-
-  // — дети Веры ♥ Алексея —
-  U('oleg2', 'Олег', 'm'),
-  U('yura', 'Юра', 'm'),
-  U('ira2', 'Ира', 'f'),
-  U('roma', 'Рома', 'm'),
-
-  // — Александр ♥ Зинаида → Елена; Елена ♥ Сергей → Герка —
-  U('elena', 'Елена', 'f', { spouses: ['sergey'], children: ['gerka'] }),
-  U('sergey', 'Сергей', 'm', { spouses: ['elena'], children: ['gerka'] }),
-  U('gerka', 'Георгий (Герка из Полковой горы)', 'm'),
-
-  // — дети Михаила ♥ Лили —
-  U('ira3', 'Ира', 'f'),
-  U('natasha', 'Наташа', 'f'),
-
-  // — Поколение 5 —
-  U('aleksandr_o', 'Александр', 'm'),
-  U('dima', 'Дима', 'm', { spouses: ['katya2'], children: ['diana', 'vanya2'] }),
-  U('katya2', 'Катя', 'f', { spouses: ['dima'], children: ['diana', 'vanya2'] }),
-  U('dasha', 'Даша', 'f', { spouses: ['denis'], children: ['polina'] }),
-  U('denis', 'Денис', 'm', { spouses: ['dasha'], children: ['polina'] }),
+  U('larisa', 'Лариса', 'f', { spouses: ['oleg'], children: ['katya', 'dasha'] }),
+  U('pavel_jr', 'Павел', 'm', { spouses: ['inna'], children: ['anton', 'danya'] }),
+  U('oleg', 'Олег', 'm', { spouses: ['larisa'], children: ['katya', 'dasha'] }),
+  U('inna', 'Инна', 'f', { spouses: ['pavel_jr'], children: ['anton', 'danya'] }),
   U('anton', 'Антон', 'm'),
   U('danya', 'Даня', 'm'),
 
-  // — Поколение 6 —
+  // — Дети Веры ♥ Алексея —
+  U('aleksey', 'Алексей Майорников', 'm', { spouses: ['vera'],
+    children: ['oleg_v', 'yura'] }),
+  U('oleg_v', 'Олег', 'm'),
+  // Юра ♥ Ира → Рома. Ира — жена (вошла по браку), НЕ сестра Юры.
+  U('yura', 'Юра', 'm', { spouses: ['ira_v2'], children: ['roma_m'] }),
+  U('ira_v2', 'Ира', 'f', { spouses: ['yura'], children: ['roma_m'] }),
+  U('roma_m', 'Рома', 'm'),
+
+  // — Александр ♥ Зинаида → Елена, Герка; Сергей ♥ Елена → Рома —
+  U('zinaida', 'Зинаида', 'f', { spouses: ['aleksandr_z'],
+    children: ['elena', 'gerka'] }),
+  U('elena', 'Елена', 'f', { spouses: ['serezha'], children: ['roma'] }),
+  U('serezha', 'Сергей', 'm', { spouses: ['elena'], children: ['roma'] }),
+  U('roma', 'Рома', 'm'),
+  U('gerka', 'Георгий (Герка из Полковой горы)', 'm'),
+
+  // — Михаил ♥ Лиля → Ира, Наташа —
+  U('lilya', 'Лиля', 'f', { spouses: ['mihail'], children: ['ira_ml', 'natasha'] }),
+  U('ira_ml', 'Ира', 'f'),
+  U('natasha', 'Наташа', 'f'),
+
+  // — Поколение 5: дети Олега ♥ Ларисы —
+  U('katya', 'Катя', 'f', { spouses: ['dima'], children: ['diana', 'vanya'] }),
+  U('dasha', 'Даша', 'f', { spouses: ['denis'], children: ['polina'] }),
+  U('dima', 'Дима', 'm', { spouses: ['katya'], children: ['diana', 'vanya'] }),
+  U('denis', 'Денис', 'm', { spouses: ['dasha'], children: ['polina'] }),
   U('diana', 'Диана', 'f'),
-  U('vanya2', 'Ваня', 'm'),
-  U('polina', 'Полина', 'f')
+  U('vanya', 'Ваня', 'm'),
+  U('polina', 'Полина', 'f'),
+
+  // — Дети Нины ♥ Васи: Катя, Миша, Александр (родные siblings) —
+  U('katya_o', 'Катя', 'f'),
+  U('misha', 'Миша', 'm'),
+  U('aleksandr_o', 'Александр', 'm')
 ];
 
-writeFileSync(new URL('../data.json', import.meta.url), encodeData({ persons }));
+writeFileSync(new URL('../public/data.json', import.meta.url), encodeData({ persons }));
 console.log('data.json создан:', persons.length, 'персон');
