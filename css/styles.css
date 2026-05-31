@@ -129,5 +129,10 @@ body{margin:0;font-family:Georgia,serif;background:var(--bg);color:var(--name)}
 .ft-union .react-flow__handle{opacity:0;width:1px;height:1px;border:none;background:transparent}
 .ft-heart{color:var(--gold);font-size:20px;line-height:1;
   text-shadow:0 0 6px rgba(212,175,106,.6);pointer-events:none}
+/* сердечко с скрытыми детьми — кликабельно, мягко пульсирует */
+.ft-heart-exp{pointer-events:auto;cursor:pointer;color:var(--gold-2);
+  text-shadow:0 0 10px var(--gold-2);animation:ftpulse 1.6s ease-in-out infinite}
+.ft-heart-exp:hover{transform:scale(1.2)}
+@keyframes ftpulse{0%,100%{opacity:.7}50%{opacity:1;text-shadow:0 0 14px var(--gold-2)}}
 .react-flow__node.ft-hl .ft-card{border-color:var(--gold-2);
   box-shadow:0 0 22px var(--gold-2)}

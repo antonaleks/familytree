@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGraph } from '../src/data.js';
-import { visibleIds, expandableIds, filterGraph } from '../src/focus.js';
+import { visibleIds, expandableIds, downExpandableKeys, filterGraph } from '../src/focus.js';
 
 // Род A: основатель a(м) → b(м) → c(м). b женат на w(ж), у w свой отец wp(м).
 // z — изолированная персона другого рода.
@@ -42,6 +42,37 @@ test('раскрытие вверх: expanded={w} показывает тест�
   const v = visibleIds(g, 'b', new Set(['w']));
   assert.ok(v.has('wp'));
   assert.ok(!v.has('z')); // боковых ветвей не добавляет
+});
+
+// Расширенный род: у тестя wp с женой wm двое детей — w и её сестра w2.
+function fixtureDown() {
+  return buildGraph({ persons: [
+    { id: 'a', fio: 'Адам', sex: 'm', children: ['b'] },
+    { id: 'b', fio: 'Борис', sex: 'm', spouses: ['w'], children: ['c'] },
+    { id: 'w', fio: 'Вера', sex: 'f', children: ['c'] },
+    { id: 'wp', fio: 'Пётр', sex: 'm', spouses: ['wm'], children: ['w', 'w2'] },
+    { id: 'wm', fio: 'Мария', sex: 'f', children: ['w', 'w2'] },
+    { id: 'w2', fio: 'Зоя', sex: 'f' },
+    { id: 'c', fio: 'Сергей', sex: 'm' }
+  ] });
+}
+
+test('down: раскрытая пара тестя показывает скрытую сестру супруги', () => {
+  const g = fixtureDown();
+  const up = visibleIds(g, 'b', new Set(['w']));        // показали wp, wm
+  assert.ok(up.has('wp') && up.has('wm') && !up.has('w2'));
+  const key = ['wp', 'wm'].sort().join('|');
+  const dk = downExpandableKeys(g, up);
+  assert.ok(dk.has(key));                                 // у пары есть скрытый ребёнок
+  const v = visibleIds(g, 'b', new Set(['w']), new Set([key]));
+  assert.ok(v.has('w2'));                                 // сестра раскрыта вниз
+});
+
+test('down: у пары без скрытых детей ключа нет', () => {
+  const g = fixtureDown();
+  const v = visibleIds(g, 'b');            // b×w видны, общий ребёнок c в роду — виден
+  const dk = downExpandableKeys(g, v);
+  assert.ok(!dk.has(['b', 'w'].sort().join('|')));
 });
 
 test('filterGraph: подграф из видимых, исходный не мутирован', () => {

@@ -9,7 +9,7 @@ import { findRelation } from './kinship.js';
 import { resizeImage } from './photo.js';
 import { loadTree, saveTree, uploadPhoto } from './db.js';
 import { buildLayout } from './layout.js';
-import { visibleIds, expandableIds, filterGraph } from './focus.js';
+import { visibleIds, expandableIds, downExpandableKeys, filterGraph } from './focus.js';
 import PersonNode from './PersonNode.jsx';
 import UnionNode from './UnionNode.jsx';
 import PersonModal from './PersonModal.jsx';
@@ -36,7 +36,8 @@ function Tree() {
   const [hoverEdge, setHoverEdge] = useState(null);
   const [version, setVersion] = useState(1);
   const [focusId, setFocusId] = useState(null);     // фокус-персона (род от неё)
-  const [expanded, setExpanded] = useState(() => new Set()); // раскрытые предки
+  const [expanded, setExpanded] = useState(() => new Set()); // раскрытые предки (вверх)
+  const [expandedDown, setExpandedDown] = useState(() => new Set()); // раскрытые ветви (вниз)
   const [positions, setPositions] = useState(null); // сохранённые координаты {id:{x,y}}
   const { fitView } = useReactFlow();
 
@@ -53,12 +54,15 @@ function Tree() {
 
   // видимое подмножество при текущем фокусе + раскрытие; чужие роды скрыты
   const visible = useMemo(
-    () => (graph ? visibleIds(graph, focusId, expanded) : new Set()),
-    [graph, focusId, expanded]);
+    () => (graph ? visibleIds(graph, focusId, expanded, expandedDown) : new Set()),
+    [graph, focusId, expanded, expandedDown]);
   const view = useMemo(
     () => (graph ? filterGraph(graph, visible) : null), [graph, visible]);
   const expandable = useMemo(
     () => (graph ? expandableIds(graph, visible) : new Set()), [graph, visible]);
+  const downKeys = useMemo(
+    () => (graph && focusId ? downExpandableKeys(graph, visible) : new Set()),
+    [graph, focusId, visible]);
 
   // пересчёт раскладки: подграф view + сохранённые позиции
   const relayout = useCallback((g, pos) => {
@@ -72,12 +76,14 @@ function Tree() {
 
   const onExpand = useCallback(
     id => setExpanded(prev => new Set(prev).add(id)), []);
+  const onExpandDown = useCallback(
+    key => setExpandedDown(prev => new Set(prev).add(key)), []);
 
   const setFocus = useCallback(id => {
-    setFocusId(id); setExpanded(new Set()); setModal(null);
+    setFocusId(id); setExpanded(new Set()); setExpandedDown(new Set()); setModal(null);
   }, []);
   const showAll = useCallback(() => {
-    setFocusId(null); setExpanded(new Set()); setModal(null);
+    setFocusId(null); setExpanded(new Set()); setExpandedDown(new Set()); setModal(null);
   }, []);
 
   const onNodesChange = useCallback(
@@ -242,10 +248,14 @@ function Tree() {
       if (selected.includes(n.id)) cls.push('ft-selected');
       if (hlNodes.has(n.id)) cls.push('ft-hl');
       const exp = n.type === 'person' && expandable.has(n.id);
-      const data = exp ? { ...n.data, expandable: true, onExpand } : n.data;
-      return (cls.length || exp) ? { ...n, className: cls.join(' '), data } : n;
+      const ukey = n.type === 'union' ? n.id.slice(2) : null;
+      const down = ukey != null && downKeys.has(ukey);
+      let data = n.data;
+      if (exp) data = { ...data, expandable: true, onExpand };
+      if (down) data = { ...data, downExpandable: true, onExpandDown, ukey };
+      return (cls.length || exp || down) ? { ...n, className: cls.join(' '), data } : n;
     }),
-    [nodes, selected, hlNodes, expandable, onExpand]);
+    [nodes, selected, hlNodes, expandable, downKeys, onExpand, onExpandDown]);
 
   // подсветка самой наведённой стрелки
   const displayEdges = useMemo(() =>
