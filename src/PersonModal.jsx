@@ -27,7 +27,28 @@ function Overlay({ children, onClose }) {
   );
 }
 
-export default function PersonModal({ person, editable, onClose, onSave, onAddRelative }) {
+// Список супружеских пар графа (для выбора родителей). Сама персона исключена.
+function listCouples(graph, selfId) {
+  const couples = [];
+  const seen = new Set();
+  for (const q of graph.values()) {
+    for (const sid of q.spouses || []) {
+      if (q.id === selfId || sid === selfId) continue;
+      const key = [q.id, sid].sort().join('|');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const a = graph.get(q.id), b = graph.get(sid);
+      if (!a || !b) continue;
+      const father = a.sex === 'm' ? a : (b.sex === 'm' ? b : a);
+      const mother = father === a ? b : a;
+      couples.push({ key, label: `${father.fio} × ${mother.fio}` });
+    }
+  }
+  couples.sort((x, y) => x.label.localeCompare(y.label, 'ru'));
+  return couples;
+}
+
+export default function PersonModal({ person, graph, editable, onClose, onSave, onAddRelative, onDelete }) {
   const fileRef = useRef(null);
 
   if (!editable) {
@@ -39,12 +60,20 @@ export default function PersonModal({ person, editable, onClose, onSave, onAddRe
     );
   }
 
+  const couples = graph ? listCouples(graph, person.id) : [];
+  const currentCouple = (person.parents || []).length === 2
+    ? [...person.parents].sort().join('|') : '';
+
   const submit = e => {
     e.preventDefault();
     const fd = new FormData(e.target);
+    const coupleKey = fd.get('__couple') || '';
     const values = {};
-    for (const [k, v] of fd.entries()) values[k] = v === '' ? null : v;
-    onSave(person.id, values, fileRef.current?.files[0]);
+    for (const [k, v] of fd.entries()) {
+      if (k === '__couple') continue;
+      values[k] = v === '' ? null : v;
+    }
+    onSave(person.id, values, fileRef.current?.files[0], coupleKey);
   };
 
   return (
@@ -67,6 +96,12 @@ export default function PersonModal({ person, editable, onClose, onSave, onAddRe
             <input name={name} defaultValue={person[name] ?? ''} />
           </label>
         ))}
+        <label>Родители (пара)
+          <select name="__couple" defaultValue={currentCouple}>
+            <option value="">— нет —</option>
+            {couples.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+          </select>
+        </label>
         <label>Фото <input type="file" ref={fileRef} accept="image/*" /></label>
         <button type="submit">Применить</button>
       </form>
@@ -75,6 +110,12 @@ export default function PersonModal({ person, editable, onClose, onSave, onAddRe
         <button onClick={() => onAddRelative(person.id, 'spouse')}>+ супруг(а)</button>
         <button onClick={() => onAddRelative(person.id, 'child')}>+ ребёнок</button>
         <button onClick={() => onAddRelative(person.id, 'parent')}>+ родитель</button>
+      </div>
+      <div className="ft-danger">
+        <button type="button" className="ft-del"
+          onClick={() => { if (confirm(`Удалить карточку «${person.fio}»? Связи будут отвязаны.`)) onDelete(person.id); }}>
+          Удалить карточку
+        </button>
       </div>
     </Overlay>
   );

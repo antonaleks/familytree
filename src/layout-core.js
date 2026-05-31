@@ -80,37 +80,68 @@ export function familyColors(fam) {
   return map;
 }
 
-export function buildEdges(graph) {
-  const edges = [];
-  const seenSpouse = new Set();
+// Супружеские пары графа (уникальные, отсортированы по id). Каждой — узел-союз
+// `u-<key>` («сердечко»): брак рисуется супруг→союз→супруг, дети — от союза.
+export function couplesOf(graph) {
+  const seen = new Set();
+  const list = [];
   for (const p of graph.values()) {
-    for (const c of p.children) {
-      if (!graph.has(c)) continue;
-      edges.push({
-        id: `e-${p.id}-${c}`,
-        source: p.id, target: c,
-        sourceHandle: 'b', targetHandle: 't',
-        type: 'smoothstep',
-        // строка вместо MarkerType.ArrowClosed — чтобы не тянуть @xyflow в node-тесты
-        markerEnd: { type: 'arrowclosed', color: GOLD, width: 22, height: 22 },
-        style: { stroke: GOLD, strokeWidth: 2.5 }
-      });
-    }
-    for (const s of p.spouses) {
+    for (const s of p.spouses || []) {
       if (!graph.has(s)) continue;
       const key = [p.id, s].sort().join('|');
-      if (seenSpouse.has(key)) continue;
-      seenSpouse.add(key);
-      edges.push({
-        id: `s-${key}`,
-        source: p.id, target: s,
-        sourceHandle: 'r', targetHandle: 'l',
-        type: 'straight',
-        label: '♥',
-        labelStyle: { fill: GOLD, fontSize: 18 },
-        labelBgStyle: { fill: 'transparent' },
-        style: { stroke: GOLD, strokeWidth: 1.5, strokeDasharray: '4 3' }
-      });
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const [a, b] = key.split('|');
+      list.push({ key, a, b, uid: `u-${key}` });
+    }
+  }
+  return list;
+}
+
+function childEdge(srcId, tgtId, id) {
+  return {
+    id, source: srcId, target: tgtId,
+    sourceHandle: 'b', targetHandle: 't',
+    type: 'smoothstep',
+    // строка вместо MarkerType.ArrowClosed — чтобы не тянуть @xyflow в node-тесты
+    markerEnd: { type: 'arrowclosed', color: GOLD, width: 22, height: 22 },
+    style: { stroke: GOLD, strokeWidth: 2.5 }
+  };
+}
+
+function spouseEdge(srcId, tgtId, id) {
+  return {
+    id, source: srcId, target: tgtId,
+    sourceHandle: 'r', targetHandle: 'l',
+    type: 'straight',
+    style: { stroke: GOLD, strokeWidth: 1.5, strokeDasharray: '4 3' }
+  };
+}
+
+export function buildEdges(graph) {
+  const edges = [];
+  const couples = couplesOf(graph);
+  const uidByKey = new Map(couples.map(c => [c.key, c.uid]));
+
+  // брак: супруг(r) → союз(l) → супруг(l). Сердечко рисует сам узел-союз.
+  for (const c of couples) {
+    edges.push(spouseEdge(c.a, c.uid, `s-${c.key}-a`));
+    edges.push(spouseEdge(c.uid, c.b, `s-${c.key}-b`));
+  }
+
+  // дети: если оба родителя — пара, стрелка идёт от союза; иначе от родителя.
+  for (const c of graph.values()) {
+    const parents = (c.parents || []).filter(id => graph.has(id));
+    let viaUnion = false;
+    if (parents.length === 2) {
+      const uid = uidByKey.get([parents[0], parents[1]].sort().join('|'));
+      if (uid) {
+        edges.push(childEdge(uid, c.id, `e-${uid}-${c.id}`));
+        viaUnion = true;
+      }
+    }
+    if (!viaUnion) {
+      for (const pid of parents) edges.push(childEdge(pid, c.id, `e-${pid}-${c.id}`));
     }
   }
   return edges;
@@ -210,6 +241,35 @@ function dfsOrder(graph) {
 // слот, строки разнесены по Y). Пара муж/жена — один юнит = соседние слоты.
 // Несвязанные браком роды просто идут дальше по X в том же ряду. Длинные линии
 // между поколениями/родами допустимы.
+// Координатное выравнивание X (приоритетный метод Sugiyama, упрощённый):
+// итеративно тянем каждый узел к среднему X соседей (родители/дети/супруги),
+// затем в каждом слое слева-направо разводим узлы на ≥ SLOT, сохраняя порядок.
+// Уменьшает длину и пересечения линий: родители встают над центром детей.
+export function coordinateX(layers, neighborsOf) {
+  const x = new Map();
+  for (const { ids } of layers) ids.forEach((id, i) => x.set(id, i * SLOT));
+
+  const place = layer => {
+    const want = layer.ids.map(id => {
+      const ns = neighborsOf(id).filter(n => x.has(n));
+      if (!ns.length) return x.get(id);
+      return ns.reduce((s, n) => s + x.get(n), 0) / ns.length;
+    });
+    let prev = -Infinity;
+    for (let i = 0; i < layer.ids.length; i++) {
+      const xi = Math.max(want[i], prev + SLOT);
+      x.set(layer.ids[i], xi);
+      prev = xi;
+    }
+  };
+
+  for (let it = 0; it < 12; it++) {
+    if (it % 2 === 0) for (let l = 0; l < layers.length; l++) place(layers[l]);
+    else for (let l = layers.length - 1; l >= 0; l--) place(layers[l]);
+  }
+  return x;
+}
+
 export function buildLayout(graph) {
   const fam = computeBloodFamily(graph);
   const colorOf = familyColors(fam);
@@ -228,30 +288,70 @@ export function buildLayout(graph) {
     units.push(u);
   }
 
-  // раскидать юниты по слоям (поколениям)
-  const byGen = new Map();
-  for (const u of units) {
-    const g = gen.get(u.members[0]);
-    if (!byGen.has(g)) byGen.set(g, []);
-    byGen.get(g).push(u);
+  // несвязанные семьи-острова → отдельные X-полосы, чтобы линии не наслаивались.
+  // Каждая связная компонента раскладывается в свою полосу; полосы разнесены по X.
+  const comps = connectedComponents(graph);
+  const compOf = new Map();
+  comps.forEach((c, i) => c.forEach(id => compOf.set(id, i)));
+
+  const unitsByComp = comps.map(() => []);
+  for (const u of units) unitsByComp[compOf.get(u.members[0])].push(u);
+
+  const neighborsOf = id => {
+    const p = graph.get(id);
+    if (!p) return [];
+    return [...p.parents, ...p.children, ...p.spouses].filter(n => graph.has(n));
+  };
+
+  const COMP_GAP = 2 * SLOT; // зазор между семьями-островами
+  const nodes = [];
+  let xBase = 0;
+  for (const cu of unitsByComp) {
+    // упорядоченные слои поколений (порядок внутри слоя — DFS-idx, пары рядом)
+    const byGen = new Map();
+    for (const u of cu) {
+      const g = gen.get(u.members[0]);
+      if (!byGen.has(g)) byGen.set(g, []);
+      byGen.get(g).push(u);
+    }
+    const layers = [...byGen.entries()].sort((a, b) => a[0] - b[0]).map(([g, us]) => {
+      us.sort((a, b) => a.idx - b.idx);
+      return { g, ids: us.flatMap(u => u.members) };
+    });
+
+    // координатное выравнивание: родители подтягиваются к центру детей и наоборот
+    const x = coordinateX(layers, neighborsOf);
+
+    // нормализуем полосу компоненты и сдвигаем к xBase
+    let minX = Infinity, maxX = -Infinity;
+    for (const v of x.values()) { minX = Math.min(minX, v); maxX = Math.max(maxX, v); }
+    const shift = xBase - minX;
+    for (const { g, ids } of layers) {
+      for (const id of ids) {
+        nodes.push({
+          id, type: 'person',
+          position: { x: x.get(id) + shift, y: g * ROW },
+          data: { person: graph.get(id), familyColor: colorOf.get(fam.get(id)) || GOLD }
+        });
+      }
+    }
+    xBase += (maxX - minX) + SLOT + COMP_GAP; // следующая семья — в своей полосе
   }
 
-  const nodes = [];
-  for (const [g, us] of [...byGen.entries()].sort((a, b) => a[0] - b[0])) {
-    us.sort((a, b) => a.idx - b.idx);
-    let slot = 0;
-    for (const u of us) {
-      for (const m of u.members) {
-        nodes.push({
-          id: m, type: 'person',
-          position: { x: slot * SLOT, y: g * ROW },
-          data: { person: graph.get(m), familyColor: colorOf.get(fam.get(m)) || GOLD }
-        });
-        slot++;
-      }
-      slot++; // зазор между юнитами
-    }
+  // узлы-союзы («сердечки») между супругами: дети тянутся от них, не от родителей
+  const CARD_W = 200, UNION_W = 24, UNION_DY = ROW / 2;
+  const pos = new Map(nodes.map(n => [n.id, n.position]));
+  for (const c of couplesOf(graph)) {
+    const pa = pos.get(c.a), pb = pos.get(c.b);
+    if (!pa || !pb) continue;
+    const cx = (pa.x + pb.x) / 2 + CARD_W / 2 - UNION_W / 2;
+    const cy = Math.max(pa.y, pb.y) + UNION_DY;
+    nodes.push({
+      id: c.uid, type: 'union', draggable: false, selectable: false,
+      position: { x: cx, y: cy }, data: {}
+    });
   }
+
   return { nodes, edges: buildEdges(graph) };
 }
 

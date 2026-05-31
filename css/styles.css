@@ -68,7 +68,17 @@ body{margin:0;font-family:Georgia,serif;background:var(--bg);color:var(--name)}
   border:none;padding:8px 14px;border-radius:4px;cursor:pointer;margin-top:10px}
 .ft-close{position:absolute;top:8px;right:12px;background:none;border:none;
   color:var(--gold);font-size:22px;cursor:pointer}
+.ft-danger{margin-top:14px;border-top:1px solid rgba(255,255,255,.12);padding-top:10px}
+.ft-del{background:#7a1f1f;color:#f3d6d6;border:none;padding:7px 12px;
+  border-radius:4px;cursor:pointer;font-size:13px}
+.ft-del:hover{background:#9a2727}
 .ft-term{font-size:24px;color:var(--gold);text-align:center;font-family:'Cinzel',serif}
 .ft-def{font-size:13px;color:var(--meta)}
 .ft-info{white-space:pre-wrap;font-size:12px;color:var(--meta)}
 #tree.kinship-mode{outline:2px dashed var(--gold);outline-offset:-2px}
+.ft-union{width:24px;height:24px;display:flex;align-items:center;justify-content:center}
+.ft-union .react-flow__handle{opacity:0;width:1px;height:1px;border:none;background:transparent}
+.ft-heart{color:var(--gold);font-size:20px;line-height:1;
+  text-shadow:0 0 6px rgba(212,175,106,.6);pointer-events:none}
+.react-flow__node.ft-hl .ft-card{border-color:var(--gold-2);
+  box-shadow:0 0 22px var(--gold-2)}
