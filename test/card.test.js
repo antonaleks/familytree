@@ -32,3 +32,12 @@ test('пустые поля: всё равно показываем строки
   assert.match(h, /Место рожд\./);
   assert.match(h, /—/);
 });
+test('фото-имя файла => относительный путь photos/', () => {
+  const h = renderCardHTML({ id:'1', fio:'Иван', status:'alive', photo:'1.jpg' });
+  assert.match(h, /src="photos\/1\.jpg"/);
+});
+test('фото-абсолютный URL => используется как есть', () => {
+  const url = 'https://x.supabase.co/storage/v1/object/public/photos/1.jpg';
+  const h = renderCardHTML({ id:'1', fio:'Иван', status:'alive', photo:url });
+  assert.match(h, new RegExp(`src="${url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`));
+});

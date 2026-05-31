@@ -31,8 +31,11 @@ export function renderCardHTML(p) {
   const st = statusFor({ ...p, sex });
   const years = p.deathYear ? `${p.birthYear ?? '?'} — ${p.deathYear}`
                             : (p.birthYear ? `${p.birthYear}` : '');
-  const photo = p.photo
-    ? `<img class="ft-photo" src="photos/${esc(p.photo)}" alt="">`
+  const photoSrc = p.photo
+    ? (/^https?:\/\//.test(p.photo) ? p.photo : `photos/${p.photo}`)
+    : null;
+  const photo = photoSrc
+    ? `<img class="ft-photo" src="${esc(photoSrc)}" alt="">`
     : `<div class="ft-photo ft-silh">${silhouette(sex)}</div>`;
   // место упокоения — только для упокоенных; ссылка если есть restMapUrl
   let rest = '';
