@@ -8,7 +8,7 @@ import { login, isEditor } from './auth.js';
 import { findRelation } from './kinship.js';
 import { resizeImage } from './photo.js';
 import { loadTree, saveTree, uploadPhoto } from './db.js';
-import { buildLayout, pickRoot } from './layout.js';
+import { buildLayout } from './layout.js';
 import { visibleIds, expandableIds, filterGraph } from './focus.js';
 import PersonNode from './PersonNode.jsx';
 import UnionNode from './UnionNode.jsx';
@@ -40,15 +40,13 @@ function Tree() {
   const [positions, setPositions] = useState(null); // сохранённые координаты {id:{x,y}}
   const { fitView } = useReactFlow();
 
-  // первичная загрузка данных из Supabase. Q5: автофокус на корень крупнейшего рода.
+  // первичная загрузка данных из Supabase. По умолчанию — всё древо (фокуса нет).
   useEffect(() => {
     loadTree()
       .then(({ data, version }) => {
-        const g = buildGraph(data);
-        setGraph(g);
+        setGraph(buildGraph(data));
         setVersion(version);
         setPositions(data.positions || {});
-        setFocusId(pickRoot(g));
       })
       .catch(() => { setGraph(buildGraph({ persons: [] })); setPositions({}); });
   }, []);
