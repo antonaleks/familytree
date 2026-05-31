@@ -36,3 +36,29 @@ test('троюродные братья (dA=dB=3)', () => {
 test('removed: двоюродный дядя (dA=3,dB=2)', () => {
   assert.equal(findRelation(gDeep(),'a3','b2').term, 'двоюродный дядя');
 });
+
+function gInlaw() {
+  return buildGraph({ persons: [
+    { id:'wf', fio:'Отец жены', sex:'m', children:['wife'] },
+    { id:'wm', fio:'Мать жены', sex:'f', children:['wife'] },
+    { id:'wife', fio:'Жена', sex:'f', spouses:['me'] },
+    { id:'me', fio:'Я', sex:'m' }
+  ]});
+}
+function gInlaw2() {
+  return buildGraph({ persons: [
+    { id:'wf', sex:'m', children:['wife','wb'] },
+    { id:'wife', fio:'Жена', sex:'f', spouses:['me'] },
+    { id:'wb', fio:'Брат жены', sex:'m' },
+    { id:'me', fio:'Я', sex:'m' }
+  ]});
+}
+test('тесть (отец жены)', () => {
+  assert.equal(findRelation(gInlaw(),'me','wf').term, 'тесть');
+});
+test('тёща (мать жены)', () => {
+  assert.equal(findRelation(gInlaw(),'me','wm').term, 'тёща');
+});
+test('шурин (брат жены)', () => {
+  assert.equal(findRelation(gInlaw2(),'me','wb').term, 'шурин');
+});

@@ -64,7 +64,57 @@ function withMeta(term) {
 
 export function findRelation(graph, a, b) {
   if (a === b) return { term: 'это один человек' };
+  const A = graph.get(a), B = graph.get(b);
+  if (!A || !B) return { term: 'родство не найдено' };
+
+  // 1) прямой супруг
+  if (A.spouses.includes(b)) return withMeta(bySex(B, 'муж', 'жена'));
+
+  // 2) кровное
   const lca = findLCA(graph, a, b);
   if (lca) return withMeta(bloodTerm(graph, a, b, lca.dA, lca.dB));
+
+  // 3) свойство: B — кровный родственник супруги(а) A
+  for (const sp of A.spouses) {
+    const r = bloodTermBetween(graph, sp, b);
+    const t = affinityFromSpouseRel(r, B, A);
+    if (t) return withMeta(t);
+  }
+  // 4) свойство: B — супруг кровного родственника A
+  for (const r of A.children.concat(siblings(graph, a))) {
+    if (graph.get(r) && graph.get(r).spouses.includes(b)) {
+      const base = bloodTermBetween(graph, a, r);
+      const t = affinityFromRelSpouse(base, B);
+      if (t) return withMeta(t);
+    }
+  }
   return { term: 'родство не найдено' };
+}
+
+function siblings(graph, id) {
+  const p = graph.get(id); const res = [];
+  for (const par of p.parents) for (const c of (graph.get(par)?.children||[]))
+    if (c !== id && !res.includes(c)) res.push(c);
+  return res;
+}
+function bloodTermBetween(graph, a, b) {
+  const lca = findLCA(graph, a, b);
+  return lca ? bloodTerm(graph, a, b, lca.dA, lca.dB) : null;
+}
+// B — кровный родственник супруга A. r = кем B приходится супругу.
+function affinityFromSpouseRel(r, B, A) {
+  const meFemale = A.sex === 'f';
+  if (r === 'отец') return meFemale ? 'свёкор' : 'тесть';
+  if (r === 'мать') return meFemale ? 'свекровь' : 'тёща';
+  if (r === 'брат') return meFemale ? 'деверь' : 'шурин';
+  if (r === 'сестра') return meFemale ? 'золовка' : 'свояченица';
+  return null;
+}
+// base — кем родственник r приходится A; B = супруг r.
+function affinityFromRelSpouse(base, B) {
+  if (base === 'сын') return 'невестка';   // жена сына
+  if (base === 'дочь') return 'зять';       // муж дочери
+  if (base === 'сестра') return B.sex === 'm' ? 'зять' : null;
+  if (base === 'брат') return B.sex === 'f' ? 'невестка' : null;
+  return null;
 }
