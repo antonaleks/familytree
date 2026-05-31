@@ -7,10 +7,14 @@ import { photoUrl } from './db.js';
 // data.familyColor задаёт акцент «крови рода» через CSS-переменную.
 // Имя файла фото превращается в публичный URL Supabase Storage перед рендером.
 export default function PersonNode({ data }) {
-  const { person, familyColor } = data;
+  const { person, familyColor, expandable, onExpand } = data;
   const display = person.photo ? { ...person, photo: photoUrl(person.photo) } : person;
   return (
     <div className="ft-node" style={{ '--blood': familyColor }}>
+      {expandable && (
+        <button className="ft-expand" title="Показать скрытых предков"
+          onClick={e => { e.stopPropagation(); onExpand?.(person.id); }}>▴</button>
+      )}
       <Handle id="t" type="target" position={Position.Top} />
       <Handle id="l" type="target" position={Position.Left} />
       <div dangerouslySetInnerHTML={{ __html: renderCardHTML(display) }} />

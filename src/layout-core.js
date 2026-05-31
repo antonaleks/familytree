@@ -270,7 +270,12 @@ export function coordinateX(layers, neighborsOf) {
   return x;
 }
 
-export function buildLayout(graph) {
+// positions — сохранённые вручную координаты {id:{x,y}} (Map или объект).
+// Если у персоны есть сохранённая позиция, она перекрывает авто-раскладку;
+// узлы-союзы пересчитываются от позиций супругов и потому следуют за ними.
+export function buildLayout(graph, positions) {
+  const savedPos = id => positions
+    && (positions instanceof Map ? positions.get(id) : positions[id]);
   const fam = computeBloodFamily(graph);
   const colorOf = familyColors(fam);
   const gen = computeGenerations(graph);
@@ -328,9 +333,10 @@ export function buildLayout(graph) {
     const shift = xBase - minX;
     for (const { g, ids } of layers) {
       for (const id of ids) {
+        const sp = savedPos(id);
         nodes.push({
           id, type: 'person',
-          position: { x: x.get(id) + shift, y: g * ROW },
+          position: sp ? { x: sp.x, y: sp.y } : { x: x.get(id) + shift, y: g * ROW },
           data: { person: graph.get(id), familyColor: colorOf.get(fam.get(id)) || GOLD }
         });
       }

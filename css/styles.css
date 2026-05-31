@@ -15,7 +15,13 @@ body{margin:0;font-family:Georgia,serif;background:var(--bg);color:var(--name)}
 #tree{width:100%;height:calc(100vh - 56px);overflow:hidden}
 .react-flow{background:var(--bg)}
 /* нода = карточка + акцент «крови рода» (цвет рамки задаёт --blood) */
-.ft-node{width:200px}
+.ft-node{width:200px;position:relative}
+/* кнопка «раскрыть скрытых предков» — над карточкой вошедшего по браку */
+.ft-expand{position:absolute;top:-14px;left:50%;transform:translateX(-50%);z-index:5;
+  width:26px;height:26px;border-radius:50%;border:1px solid var(--gold);
+  background:var(--burg-2);color:var(--gold);font-size:14px;line-height:1;cursor:pointer;
+  box-shadow:0 0 10px rgba(0,0,0,.5);transition:background .18s ease,color .18s ease,box-shadow .18s ease}
+.ft-expand:hover{background:var(--gold);color:var(--burg-2);box-shadow:0 0 14px rgba(212,175,106,.6)}
 .ft-node .ft-card{border-color:var(--blood,var(--gold));
   box-shadow:0 8px 28px rgba(0,0,0,.4),0 0 0 2px var(--blood,transparent) inset}
 .ft-node .react-flow__handle{opacity:0;width:6px;height:6px;border:none;
@@ -98,6 +104,26 @@ body{margin:0;font-family:Georgia,serif;background:var(--bg);color:var(--name)}
 .ft-term{font-size:24px;color:var(--gold);text-align:center;font-family:'Cinzel',serif}
 .ft-def{font-size:13px;color:var(--meta)}
 .ft-info{white-space:pre-wrap;font-size:12px;color:var(--meta)}
+/* «строить отсюда» в карточке персоны */
+.ft-focus-btn{margin:4px 0 10px}
+/* модалка выбора фокус-персоны */
+.ft-modal-focus{max-width:460px}
+.ft-search{width:100%;padding:8px 10px;margin:6px 0 10px;background:#1c0a0d;
+  border:1px solid var(--gold);color:var(--name);border-radius:99px;font-family:inherit}
+.ft-showall{display:inline-block;margin-bottom:10px}
+.ft-focus-list{list-style:none;margin:0;padding:0;max-height:52vh;overflow:auto}
+.ft-fi{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:6px;
+  cursor:pointer;transition:background .15s ease}
+.ft-fi:hover{background:rgba(212,175,106,.14)}
+.ft-fi-cur{background:rgba(212,175,106,.22)}
+.ft-fa{flex:0 0 auto;width:40px;height:40px;border-radius:50%;overflow:hidden;
+  border:2px solid var(--gold);background:var(--photobg);display:flex;
+  align-items:center;justify-content:center;font-size:20px}
+.ft-fa-img{width:100%;height:100%;object-fit:cover}
+.ft-fi-txt{display:flex;flex-direction:column;min-width:0}
+.ft-fi-name{color:var(--name);font-size:14px}
+.ft-fi-years{color:var(--gold);font-size:11px;font-style:italic}
+.ft-fi-empty{color:var(--meta);padding:10px;font-style:italic}
 #tree.kinship-mode{outline:2px dashed var(--gold);outline-offset:-2px}
 .ft-union{width:24px;height:24px;display:flex;align-items:center;justify-content:center}
 .ft-union .react-flow__handle{opacity:0;width:1px;height:1px;border:none;background:transparent}

@@ -8,11 +8,13 @@ import { login, isEditor } from './auth.js';
 import { findRelation } from './kinship.js';
 import { resizeImage } from './photo.js';
 import { loadTree, saveTree, uploadPhoto } from './db.js';
-import { buildLayout } from './layout.js';
+import { buildLayout, pickRoot } from './layout.js';
+import { visibleIds, expandableIds, filterGraph } from './focus.js';
 import PersonNode from './PersonNode.jsx';
 import UnionNode from './UnionNode.jsx';
 import PersonModal from './PersonModal.jsx';
 import KinshipModal from './KinshipModal.jsx';
+import FocusModal from './FocusModal.jsx';
 
 const nodeTypes = { person: PersonNode, union: UnionNode };
 
@@ -33,44 +35,75 @@ function Tree() {
   const [modal, setModal] = useState(null); // {type:'person',id} | {type:'kinship',a,b,r}
   const [hoverEdge, setHoverEdge] = useState(null);
   const [version, setVersion] = useState(1);
+  const [focusId, setFocusId] = useState(null);     // фокус-персона (род от неё)
+  const [expanded, setExpanded] = useState(() => new Set()); // раскрытые предки
+  const [positions, setPositions] = useState(null); // сохранённые координаты {id:{x,y}}
   const { fitView } = useReactFlow();
 
-  // первичная загрузка данных из Supabase
+  // первичная загрузка данных из Supabase. Q5: автофокус на корень крупнейшего рода.
   useEffect(() => {
     loadTree()
-      .then(({ data, version }) => { setGraph(buildGraph(data)); setVersion(version); })
-      .catch(() => setGraph(buildGraph({ persons: [] })));
+      .then(({ data, version }) => {
+        const g = buildGraph(data);
+        setGraph(g);
+        setVersion(version);
+        setPositions(data.positions || {});
+        setFocusId(pickRoot(g));
+      })
+      .catch(() => { setGraph(buildGraph({ persons: [] })); setPositions({}); });
   }, []);
 
-  // пересчёт раскладки при смене графа
-  const relayout = useCallback(g => {
-    const { nodes: n, edges: e } = buildLayout(g);
+  // видимое подмножество при текущем фокусе + раскрытие; чужие роды скрыты
+  const visible = useMemo(
+    () => (graph ? visibleIds(graph, focusId, expanded) : new Set()),
+    [graph, focusId, expanded]);
+  const view = useMemo(
+    () => (graph ? filterGraph(graph, visible) : null), [graph, visible]);
+  const expandable = useMemo(
+    () => (graph ? expandableIds(graph, visible) : new Set()), [graph, visible]);
+
+  // пересчёт раскладки: подграф view + сохранённые позиции
+  const relayout = useCallback((g, pos) => {
+    const { nodes: n, edges: e } = buildLayout(g, pos);
     setNodes(n);
     setEdges(fixMarkers(e));
     requestAnimationFrame(() => fitView({ duration: 400, padding: 0.15 }));
   }, [fitView]);
 
-  useEffect(() => { if (graph) relayout(graph); }, [graph, relayout]);
+  useEffect(() => { if (view) relayout(view, positions); }, [view, positions, relayout]);
+
+  const onExpand = useCallback(
+    id => setExpanded(prev => new Set(prev).add(id)), []);
+
+  const setFocus = useCallback(id => {
+    setFocusId(id); setExpanded(new Set()); setModal(null);
+  }, []);
+  const showAll = useCallback(() => {
+    setFocusId(null); setExpanded(new Set()); setModal(null);
+  }, []);
 
   const onNodesChange = useCallback(
     changes => setNodes(nds => applyNodeChanges(changes, nds)), []);
 
-  const onNodeClick = useCallback((_e, node) => {
-    if (kinshipMode) {
-      setSelected(prev => {
-        const next = prev.includes(node.id) ? prev : [...prev, node.id];
-        if (next.length === 2) {
-          const [a, b] = next;
-          setModal({ type: 'kinship', a, b, r: findRelation(graph, a, b) });
-          setKinshipMode(false);
-          return [];
-        }
-        return next;
-      });
-    } else {
-      setModal({ type: 'person', id: node.id });
-    }
-  }, [kinshipMode, graph]);
+  // выбрать карточку для расчёта родства; на второй — показать результат
+  const pickForKinship = useCallback(node => {
+    setSelected(prev => {
+      const next = prev.includes(node.id) ? prev : [...prev, node.id];
+      if (next.length === 2) {
+        const [a, b] = next;
+        setModal({ type: 'kinship', a, b, r: findRelation(graph, a, b) });
+        setKinshipMode(false);
+        return [];
+      }
+      return next;
+    });
+  }, [graph]);
+
+  // обычный клик — карточка; Shift-клик (или режим) — расчёт родства по двум
+  const onNodeClick = useCallback((e, node) => {
+    if (kinshipMode || e.shiftKey) pickForKinship(node);
+    else setModal({ type: 'person', id: node.id });
+  }, [kinshipMode, pickForKinship]);
 
   // ——— вход редактора (общий аккаунт Supabase) ———
   const enterAdmin = async () => {
@@ -155,19 +188,37 @@ function Tree() {
     syncGraph();
   };
 
+  // текущие координаты карточек (после ручных подвижек) → {id:{x,y}}
+  const collectPositions = () => {
+    const pos = {};
+    for (const n of nodes) {
+      if (n.type === 'person') pos[n.id] = { x: Math.round(n.position.x), y: Math.round(n.position.y) };
+    }
+    return pos;
+  };
+
   const doSave = async () => {
     try {
-      const raw = { persons: [...graph.values()] };
+      // мерж: видимые ноды обновляют координаты, скрытые (вне фокуса) сохраняются
+      const pos = { ...(positions || {}), ...collectPositions() };
+      const raw = { persons: [...graph.values()], positions: pos };
       const res = await saveTree(raw, version);
       if (res.conflict) {
         alert('Древо изменилось в другом месте. Обнови страницу, затем повтори правки.');
         return;
       }
       setVersion(res.version);
+      setPositions(pos);
       alert('Сохранено.');
     } catch (e) {
       alert('Ошибка сохранения: ' + e.message);
     }
+  };
+
+  // сбросить ручные подвижки → авто-раскладка (сохранится при следующем «Сохранить»)
+  const resetTree = () => {
+    if (!confirm('Сбросить расположение карточек к авто-раскладке?')) return;
+    setPositions({});
   };
 
   const onEdgeMouseEnter = useCallback((_e, edge) => setHoverEdge(edge.id), []);
@@ -185,15 +236,18 @@ function Tree() {
     return new Set([...cardIds(e.source), ...cardIds(e.target)]);
   }, [hoverEdge, edges]);
 
-  // подсветка выбранных (режим родства) и карточек наведённой стрелки
+  // подсветка выбранных (режим родства) и карточек наведённой стрелки;
+  // плюс инъекция признака «раскрыть предков» в person-ноды
   const displayNodes = useMemo(() =>
     nodes.map(n => {
       const cls = [];
       if (selected.includes(n.id)) cls.push('ft-selected');
       if (hlNodes.has(n.id)) cls.push('ft-hl');
-      return cls.length ? { ...n, className: cls.join(' ') } : n;
+      const exp = n.type === 'person' && expandable.has(n.id);
+      const data = exp ? { ...n.data, expandable: true, onExpand } : n.data;
+      return (cls.length || exp) ? { ...n, className: cls.join(' '), data } : n;
     }),
-    [nodes, selected, hlNodes]);
+    [nodes, selected, hlNodes, expandable, onExpand]);
 
   // подсветка самой наведённой стрелки
   const displayEdges = useMemo(() =>
@@ -211,10 +265,13 @@ function Tree() {
       <header id="topbar">
         <h1>Семейное древо</h1>
         <div className="actions">
+          <button onClick={() => setModal({ type: 'focus' })}>От кого</button>
+          {focusId && <button onClick={showAll}>Всё древо</button>}
           <button onClick={() => { setKinshipMode(m => !m); setSelected([]); }}>
             {kinshipMode ? 'Отмена' : 'Кто кому кем'}
           </button>
           {!admin && <button onClick={enterAdmin}>Редактировать</button>}
+          {admin && <button onClick={resetTree}>Сбросить дерево</button>}
           {admin && <button onClick={doSave}>Сохранить</button>}
         </div>
       </header>
@@ -244,6 +301,16 @@ function Tree() {
           onSave={savePerson}
           onAddRelative={addRelative}
           onDelete={deletePerson}
+          onFocus={setFocus}
+        />
+      )}
+      {modal?.type === 'focus' && (
+        <FocusModal
+          graph={graph}
+          focusId={focusId}
+          onPick={setFocus}
+          onShowAll={showAll}
+          onClose={() => setModal(null)}
         />
       )}
       {modal?.type === 'kinship' && (

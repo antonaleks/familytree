@@ -49,13 +49,19 @@ function listCouples(graph, selfId) {
   return couples;
 }
 
-export default function PersonModal({ person, graph, editable, onClose, onSave, onAddRelative, onDelete }) {
+export default function PersonModal({ person, graph, editable, onClose, onSave, onAddRelative, onDelete, onFocus }) {
   const fileRef = useRef(null);
+
+  const focusBtn = (
+    <button type="button" className="ft-btn ft-btn-ghost ft-focus-btn"
+      onClick={() => onFocus(person.id)}>⌖ Строить отсюда</button>
+  );
 
   if (!editable) {
     return (
       <Overlay onClose={onClose}>
         <h3>{person.fio}</h3>
+        {focusBtn}
         <pre className="ft-info">{JSON.stringify(person, null, 2)}</pre>
       </Overlay>
     );
@@ -80,6 +86,7 @@ export default function PersonModal({ person, graph, editable, onClose, onSave, 
   return (
     <Overlay onClose={onClose}>
       <h3>Правка: {person.fio}</h3>
+      {focusBtn}
       <form onSubmit={submit}>
         <label>ФИО<input name="fio" defaultValue={person.fio ?? ''} /></label>
         <label>Пол
