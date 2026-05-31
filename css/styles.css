@@ -119,6 +119,19 @@ body{margin:0;font-family:Georgia,serif;background:var(--bg);color:var(--name)}
 .ft-term{font-size:24px;color:var(--gold);text-align:center;font-family:'Cinzel',serif}
 .ft-def{font-size:13px;color:var(--meta)}
 .ft-info{white-space:pre-wrap;font-size:12px;color:var(--meta)}
+/* инструкция */
+.ft-modal-help{max-width:520px}
+.ft-help-sec{margin-top:14px}
+.ft-help-sec h4{color:var(--gold);font-size:14px;letter-spacing:1px;text-transform:uppercase;
+  margin:0 0 8px;border-bottom:1px solid rgba(212,175,106,.25);padding-bottom:4px}
+.ft-help-dl{margin:0}
+.ft-help-item{display:flex;gap:10px;padding:5px 0;font-size:13px}
+.ft-help-item dt{flex:0 0 120px;color:var(--gold-2);font-weight:700}
+.ft-help-item dd{margin:0;color:var(--name);opacity:.9}
+@media(max-width:600px){
+  .ft-help-item{flex-direction:column;gap:2px}
+  .ft-help-item dt{flex-basis:auto}
+}
 /* красивый просмотр карточки (не-редактор) */
 .ft-view{text-align:center}
 .ft-vphoto{width:110px;height:110px;border-radius:50%;margin:0 auto 12px;overflow:hidden;

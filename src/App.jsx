@@ -15,6 +15,7 @@ import UnionNode from './UnionNode.jsx';
 import PersonModal from './PersonModal.jsx';
 import KinshipModal from './KinshipModal.jsx';
 import FocusModal from './FocusModal.jsx';
+import HelpModal from './HelpModal.jsx';
 
 const nodeTypes = { person: PersonNode, union: UnionNode };
 
@@ -290,6 +291,7 @@ function Tree() {
       <header id="topbar">
         <h1>Семейное древо</h1>
         <div className="actions">
+          <button onClick={() => setModal({ type: 'help' })}>Инструкция</button>
           <button onClick={() => setModal({ type: 'focus' })}>От кого</button>
           {focusId && <button onClick={showAll}>Всё древо</button>}
           <button onClick={exportJson}>Экспорт</button>
@@ -339,6 +341,7 @@ function Tree() {
           onClose={() => setModal(null)}
         />
       )}
+      {modal?.type === 'help' && <HelpModal onClose={() => setModal(null)} />}
       {modal?.type === 'kinship' && (
         <KinshipModal
           a={graph.get(modal.a)}
