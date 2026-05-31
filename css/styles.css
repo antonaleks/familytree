@@ -36,3 +36,22 @@ body{margin:0;font-family:Georgia,serif;background:var(--bg);color:var(--name)}
 .ft-meta{font-size:10px;letter-spacing:.5px;color:var(--meta);text-transform:uppercase}
 .ft-rest,.ft-contacts{display:block;font-size:11px;color:var(--gold);margin-top:6px}
 .ft-rest{text-decoration:underline}
+
+.ft-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;
+  align-items:center;justify-content:center;z-index:100}
+.ft-modal{position:relative;background:linear-gradient(#3a1518,#2a1014);
+  border:1.5px solid var(--gold);border-radius:6px;padding:22px;max-width:420px;
+  width:90%;max-height:85vh;overflow:auto;color:var(--name)}
+.ft-modal h3{color:var(--gold);margin-top:0}
+.ft-modal label{display:block;margin:8px 0;font-size:13px}
+.ft-modal input,.ft-modal select{width:100%;padding:6px;margin-top:2px;
+  background:#1c0a0d;border:1px solid var(--gold);color:var(--name);border-radius:3px}
+.ft-modal button[type=submit],#ft-addbtn{background:var(--gold);color:var(--burg-2);
+  border:none;padding:8px 14px;border-radius:4px;cursor:pointer;margin-top:10px}
+.ft-close{position:absolute;top:8px;right:12px;background:none;border:none;
+  color:var(--gold);font-size:22px;cursor:pointer}
+.ft-term{font-size:24px;color:var(--gold);text-align:center;font-family:'Cinzel',serif}
+.ft-def{font-size:13px;color:var(--meta)}
+.ft-info{white-space:pre-wrap;font-size:12px;color:var(--meta)}
+body:not(.admin) .ft-addrel{display:none}
+body.kinship-mode #tree{outline:2px dashed var(--gold)}
